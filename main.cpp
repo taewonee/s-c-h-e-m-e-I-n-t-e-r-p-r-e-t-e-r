@@ -35,7 +35,6 @@ private:
     hash_cell *hash_table = new hash_cell[capacity];
     //    hash_cell* hash_table = new hash_cell[10];
 };
-
 class Node_Array
 {
 public:
@@ -50,11 +49,11 @@ private:
         int left;
         int right;
     };
-    node_cell node_array[300];
+    int capacity = 300;
     int current = 0;
+    node_cell *node_array = new node_cell[capacity];
     //constructor로 옮겨야한다
 };
-
 // get a hash value;
 int Hash_Table::hashFind(string hashKey)
 {
@@ -71,36 +70,11 @@ int Hash_Table::hashFind(string hashKey)
         }
         hashValue = (hashValue + 1) % capacity;
     }
-    throw("hash is full for now");
+    throw runtime_error("hash is full for now");
+    //    throw(string("hash is full for now"));
 };
-/*
-void Node_Array::nodearrayprocess(string input)
-{
-    char k;
-    string symbol; //이걸 hash로 먼저 바꿔놔야하네ㅇㅇ
-    //symbol = hashvalue(Symbol);
-    //hashvalue 불러오면서 없으면 node array update, return
-
-    //    while(input[k] == ' ')
-    //        symbol.(input[k]);
-    if (symbol == "(") //여튼 (를 만났을 때
-    {
-        node_array[current].right = ++current;
-        node_array[current].right = 0;
-    }
-    else if(0?) //걍 다른 symbol 만나씅ㄹ 때
-    {
-    }
-    else
-    { //대충 다른 symbol일때
-        node_array[current].left = toHashValue(symbol);
-        node_array[current].right = ++current;
-    }
-};
-*/
 //constructor 필요
 //
-
 unsigned int StringToInt(string s)
 {
     int length = (int)s.length();
@@ -117,7 +91,6 @@ unsigned int StringToInt(string s)
     }
     return answer;
 };
-
 string next_token(string *sentence)
 {
     if (sentence->empty())
@@ -158,13 +131,17 @@ int main()
 {
     Hash_Table HT;
     Node_Array NA;
-    string input;
-    getline(cin, input);
-    //    input = "( define (square x (* x x)))";
-    NA.Read(&input, &HT);
-    HT.print();
-    cout << endl;
-    NA.print();
+    while (true)
+    {
+        string input;
+        getline(cin, input);
+        string line = input;
+        //    input = "( define (square x (* x x)))";
+        NA.Read(&input, &HT);
+        HT.print();
+        NA.print();
+        cout << "input: " << line << endl;
+    }
     return 0;
 }
 
@@ -185,6 +162,8 @@ int Node_Array::Read(string *input, Hash_Table *HT)
             {
                 //root = temp = alloc();
                 current++;
+                if (current == capacity)
+                    throw runtime_error("node is full for now");
                 root = temp = current;
                 first = false;
             }
@@ -192,6 +171,8 @@ int Node_Array::Read(string *input, Hash_Table *HT)
             {
                 //node_array[temp].right = alloc();
                 current++;
+                if (current == capacity)
+                    throw runtime_error("node is full for now");
                 node_array[temp].right = current;
                 temp = node_array[temp].right;
             }
@@ -201,31 +182,25 @@ int Node_Array::Read(string *input, Hash_Table *HT)
                 node_array[temp].left = Read(input, HT);
             }
             else
-            {
                 node_array[temp].left = token_hash_value;
-            }
             if (!first)
-            {
                 node_array[temp].right = -1;
-            }
             token_hash_value = HT->hashFind(next_token(input));
         }
         return root;
     }
     else
-    {
         return token_hash_value;
-    }
 }
-
 void Node_Array::print()
 {
+    cout << " ========== Memory Array ==========" << endl;
     for (int i = 1; i < current + 1; i++)
-        cout << "current: " << i << " l:" << node_array[i].left << " r:" << node_array[i].right << endl;
+        cout << "node: " << i << " l:" << node_array[i].left << " r:" << node_array[i].right << endl;
 }
-
 void Hash_Table::print()
 {
+    cout << " ========== Hash_Table ==========" << endl;
     for (int i = 0; i < capacity; i++)
         if (!hash_table[i].Symbol.empty())
             cout << "index: " << i << " symbol: " << hash_table[i].Symbol << endl;
