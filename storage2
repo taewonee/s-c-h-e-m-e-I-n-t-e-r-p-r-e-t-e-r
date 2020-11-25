@@ -49,7 +49,6 @@ public:
     int allocateNew();                            //allocate new memory
     void printList(int node, Hash_Table *HT);     //print the List
     int checkStructure(int rootA, int rootB);     //for the isequal(not used)
-    void garbageCollection();
 
 private:
     class node_cell
@@ -131,19 +130,12 @@ int Node_Array::checkStructure(int rootA, int rootB)
 }
 int Node_Array::allocateNew()
 {
-
     current++;
-    if (current > capacity)
-        garbageCollection();
+    if (current == capacity)
+        throw runtime_error("node is full for now");
     return current;
 }
-void Node_Array::garbageCollection()
-{
-    cout << "garbage Collection" << endl;
-    throw runtime_error("node is full for now");
 
-    //    if(current == capacity)
-}
 int Hash_Table::getLink(int address)
 {
     return hash_table[address].link;
@@ -271,14 +263,7 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         if (HT->getLink(-root))
         {
             //            HT->print();
-            cout << "link exist: "
-                 << "root: " << root << " link: " << HT->getLink(-root) << endl;
-            if (HT->getLink(-root) == 301)
-            {
-                cout << "get link called" << endl;
-                return "0";
-            }
-
+            cout << "link exist: " << root << endl;
             return Eval(HT->getLink(-root), HT);
         }
         cout << "root: " << to_string(root) << endl;
@@ -419,9 +404,7 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         node_array[newmemory].left = stoi(Eval(node_array[node_array[root].right].left, HT));
         cout << "left done " << node_array[newmemory].left << endl;
         node_array[newmemory].right = stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT));
-        cout << "right done" << node_array[newmemory].right << endl;
-        print();
-        HT->print();
+        cout << "right done" << endl;
         return to_string(newmemory);
     }
     else if (token_index == HT->getHashValue("cond")) //to change
@@ -468,24 +451,17 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         while (param != 0) //input 값을 param에  //이 때 left를 eval해서 저장해야하나보다... 웅장이 가슴해진다
         {
             cout << param << endl;
-            int p = stoi(Eval(input, HT));
-            if (p > 0)
-            {
-                cout << " p>0 " << p << endl;
-                HT->setLink(node_array[param].left, p);
-            }
-            if (p != 0)
-                HT->setLink(-node_array[param].left, p);
-            else
-            {
-                HT->setLink(-node_array[param].left, 301);
-                break;
-            }
+            cout << "param : " << stoi(Eval(input, HT)) << endl;
+            HT->setLink(-node_array[param].left, stoi(Eval(input, HT)));
             param = node_array[param].right;
             input = node_array[input].right;
         }
 
         cout << "ofcour sehrer" << endl;
+        //        HT->print();
+
+        //        this->print();
+        //        HT->print();
         cout << node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left << endl;
         string result = Eval(node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left, HT); //결과 get
         cout << "daaam" << endl;
@@ -498,7 +474,6 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             param = node_array[param].right;
         }
         //        delete array;
-        HT->print();
         return result;
     }
     else if (token_index > 0) //list의 시작
