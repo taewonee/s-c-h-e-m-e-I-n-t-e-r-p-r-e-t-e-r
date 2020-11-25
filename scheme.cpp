@@ -266,11 +266,12 @@ string CheckStructure(string a, string b);
 
 string Node_Array::Eval(int root, Hash_Table *HT)
 {
+    if (root == 301)
+        return "0";
     if (root <= 0) //if it's a leaf
     {
         if (HT->getLink(-root))
         {
-            //            HT->print();
             cout << "link exist: "
                  << "root: " << root << " link: " << HT->getLink(-root) << endl;
             if (HT->getLink(-root) == 301)
@@ -278,7 +279,6 @@ string Node_Array::Eval(int root, Hash_Table *HT)
                 cout << "get link called" << endl;
                 return "0";
             }
-
             return Eval(HT->getLink(-root), HT);
         }
         cout << "root: " << to_string(root) << endl;
@@ -369,7 +369,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     else if (token_index == HT->getHashValue("null?")) //change
     {
         cout << "isnull: " << node_array[root].right << " " << node_array[node_array[root].right].left << endl;
-        if (node_array[root].right == 0 || Eval(node_array[node_array[root].right].left, HT) == "0") //NIL should be 0 from constructor;
+        cout << Eval(node_array[node_array[root].right].left, HT);
+        if (node_array[root].right == 0 || Eval(node_array[node_array[root].right].left, HT) == "0" || HT->getLink(-node_array[node_array[root].right].left) == 301) //NIL should be 0 from constructor;
         {
             cout << "true!" << endl;
             return to_string(HT->getHashValue("#t"));
@@ -377,7 +378,7 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         else
         {
             cout << "false!" << endl;
-            HT->print();
+            //            HT->print();
             return to_string(HT->getHashValue("#f"));
         }
         cout << "i guess here's wrong" << endl;
@@ -386,24 +387,26 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         return to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].left);
     else if (token_index == HT->getHashValue("cdr"))
     {
+        //        print();
         cout << "cdr called " << node_array[node_array[root].right].left << endl;
-        cout << "shit " << to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].right) << endl;
-        cout << "kkkk" << endl;
-        return to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].right);
+        string result = to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].right);
+
+        cout << "shit " << result << endl;
+        return result;
     }
     else if (token_index == HT->getHashValue("define")) //how to know this is function define?
     {
         //        cout << "define called" << endl;
-        //그치만 define 이후에 실제 식이 있는 부분은 먼저 eval하면 안 될 것 같은데... 내버려둬야할 것 같기도? 추후에 call 했을 떄 eval인 것이다
         if (node_array[node_array[node_array[node_array[root].right].right].left].left == HT->getHashValue("lambda"))
         {
-            //            cout << "node: " << node_array[node_array[node_array[node_array[root].right].right].left].left << " " << HT->getHashValue("lambda") << endl;
+            cout << "user define function, node: " << node_array[node_array[node_array[node_array[root].right].right].left].left << " " << HT->getHashValue("lambda") << endl;
             HT->setLink(-node_array[node_array[root].right].left, node_array[node_array[node_array[root].right].right].left); //양수 index를 저장
-                                                                                                                              //            cout << "link: " << -node_array[node_array[root].right].left << " " << node_array[node_array[node_array[root].right].right].left << endl;
         }
         else
         {
-            HT->setLink(-node_array[node_array[root].right].left, node_array[node_array[root].right].right); //양수로 check
+            cout << "secret " << endl;
+            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(node_array[node_array[node_array[root].right].right].left))); // 음수로 저장
+                                                                                                                                                               //            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT))))); // 음수로 저장
         }
     }
     else if (token_index == HT->getHashValue("quote"))
@@ -420,8 +423,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         cout << "left done " << node_array[newmemory].left << endl;
         node_array[newmemory].right = stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT));
         cout << "right done" << node_array[newmemory].right << endl;
-        print();
-        HT->print();
+        //        print();
+        //        HT->print();
         return to_string(newmemory);
     }
     else if (token_index == HT->getHashValue("cond")) //to change
@@ -465,31 +468,36 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left; //param 초기화
         cout << "param: " << param << endl;
         cout << "input: " << input << endl;
+        HT->print();
         while (param != 0) //input 값을 param에  //이 때 left를 eval해서 저장해야하나보다... 웅장이 가슴해진다
         {
             cout << param << endl;
             int p = stoi(Eval(input, HT));
-            if (p > 0)
+            cout << "pppppppppppppppppp: " << p << endl;
+            //            if (p > 0)
+            //                p = input;
+            if (p == 0)
             {
-                cout << " p>0 " << p << endl;
-                HT->setLink(node_array[param].left, p);
+                cout << "301 used" << endl;
+                p = 301;
             }
-            if (p != 0)
-                HT->setLink(-node_array[param].left, p);
-            else
-            {
-                HT->setLink(-node_array[param].left, 301);
-                break;
-            }
+
+            cout << " p: " << p << endl;
+            cout << "param: " << HT->getSymbol(node_array[param].left) << endl;
+
+            HT->setLink(-node_array[param].left, p);
             param = node_array[param].right;
             input = node_array[input].right;
         }
+        HT->print();
 
         cout << "ofcour sehrer" << endl;
+
         cout << node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left << endl;
         string result = Eval(node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left, HT); //결과 get
         cout << "daaam" << endl;
         param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left;
+
         while (param != 0) //setting param as input variable (param을 원래 값으로 돌려 놓음)
         {
             int temp = 0;
@@ -498,7 +506,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             param = node_array[param].right;
         }
         //        delete array;
-        HT->print();
+        //        print();
+        //        HT->print();
         return result;
     }
     else if (token_index > 0) //list의 시작
@@ -520,7 +529,11 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     else
     {
         cout << "else called" << endl;
-        return Eval(token_index, HT);
+        if (node_array[root].right == 0)
+            return Eval(token_index, HT);
+
+        cout << "finally" << endl;
+        return to_string(root);
         //        cout << "else called, token_index: " << token_index << endl;
         //        if (node_array[root].right == 0)
         //        {
