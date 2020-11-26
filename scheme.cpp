@@ -1,5 +1,3 @@
-
-
 //Data_Structure_Project2_Scheme Interpreter_2016-12161_Taewon Lee
 //Hash_Table, Node_Array are implemented with class, snake_Case
 //Other function: camelCase
@@ -21,6 +19,7 @@ public:
     string getSymbol(int hashKey);     //to get symbol
     int setLink(int address, int ptr); //to set link
     int getLink(int address);          //to get link
+    int getcap();
     Hash_Table()
     {
         hash_table[0].Symbol = "nil";
@@ -42,16 +41,17 @@ private:
 class Node_Array
 {
 public:
-    int Read(string *token, Hash_Table *HT);      //read the scheme command(build the structure)
-    void print();                                 //print the Node_Array
-    int nextRoot() { return current + 1; }        //return the Root of free List
-    string readCommand(int root, Hash_Table *HT); //return the command according to the Node_array built
-    void free(int root);                          //delete nodes
-    string Eval(int root, Hash_Table *HT);        //Evaluation Function
-    int allocateNew(Hash_Table *HT);              //allocate new memory
-    void printList(int node, Hash_Table *HT);     //print the List
-    int checkStructure(int rootA, int rootB);     //for the isequal(not used)
+    int Read(string *token, Hash_Table *HT);                  //read the scheme command(build the structure)
+    void print();                                             //print the Node_Array
+    int nextRoot() { return (current + 1) % (capacity - 1); } //return the Root of free List
+    string readCommand(int root, Hash_Table *HT);             //return the command according to the Node_array built
+    void free(int root);                                      //delete nodes
+    string Eval(int root, Hash_Table *HT);                    //Evaluation Function
+    int allocateNew(Hash_Table *HT);                          //allocate new memory
+    void printList(int node, Hash_Table *HT);                 //print the List
+    int checkStructure(int rootA, int rootB, Hash_Table *HT); //for the isequal(not used)
     void garbageCollection(Hash_Table *HT);
+    int nroot = 0;
     Node_Array()
     {
         for (int i = 0; i < capacity; i++)
@@ -66,6 +66,7 @@ private:
     {
         friend Node_Array;
         int left, right;
+        void copyTree(node_cell *new_node_array, node_cell *node_array, int i);
     };
     int capacity = 300;
     int current = 0;
@@ -91,10 +92,9 @@ int main()
         newcommand = preprocess(&input, newcommand);
         //        cout << "preprocessed: " << newcommand << endl;
         int root = NA.Read(&newcommand, &HT);
-        int printRoot = (root < 0) ? -1 : root;
-        //        cout << "] Free list's root = " << NA.nextRoot() << endl;
-        //        cout << "List's root = " << printRoot << endl;
-        //        HT.print();
+        NA.nroot = NA.nextRoot();
+        cout << "nroot: " << NA.nroot << endl;
+        //        NA.print();
         string result = NA.Eval(root, &HT);
         cout << "] ";
         int result_int = stoi(result);
@@ -105,28 +105,31 @@ int main()
     }
     return 0;
 }
-
-int Node_Array::checkStructure(int rootA, int rootB)
+//it cheks the structure + value
+int Node_Array::checkStructure(int rootA, int rootB, Hash_Table *HT)
 {
-    //    cout << "rA: " << rootA << " rB: " << rootB << endl;
-
-    if (node_array[rootA].left <= 0 && node_array[rootA].right <= 0)
+    cout << "A: " << rootA << "B: " << rootB << endl;
+    if (node_array[rootA].left <= 0 && node_array[rootA].right <= 0) //leaf
+    {
+        cout << "leaf" << endl;
         if (node_array[rootA].left == node_array[rootB].left && node_array[rootA].right == node_array[rootB].right)
             return 1;
+        else
+            return 0;
+    }
     if (node_array[rootA].left <= 0)
     {
         if (node_array[rootA].left != node_array[rootB].left)
             return 0;
         else
-            return checkStructure(node_array[rootA].right, node_array[rootB].right);
+            return checkStructure(node_array[rootA].right, node_array[rootB].right, HT);
     }
-
     if (node_array[rootA].right <= 0)
     {
         if (node_array[rootA].right != node_array[rootB].right)
             return 0;
         else
-            return checkStructure(node_array[rootA].left, node_array[rootB].left);
+            return checkStructure(node_array[rootA].left, node_array[rootB].left, HT);
     }
     return 1;
 }
@@ -144,13 +147,54 @@ int Node_Array::allocateNew(Hash_Table *HT)
         garbageCollection(HT);
     return current;
 }
+void Node_Array::node_cell::copyTree(node_cell *new_node_array, node_cell *node_array, int i)
+{
+    new_node_array[i].left = node_array[i].left;
+    new_node_array[i].right = node_array[i].right;
+    if (node_array[i].left > 0)
+        copyTree(new_node_array, node_array, node_array[i].left);
+    if (node_array[i].right > 0)
+        copyTree(new_node_array, node_array, node_array[i].right);
+    return;
+}
+
 void Node_Array::garbageCollection(Hash_Table *HT)
 {
-    cout << "garbage Collection" << endl;
+    //reset current = 0;
+    int low = 0;
+    int *link = new int;
+    int howmany = 0;
+    for (int i = 0; i < HT->getcap(); i++)
+    {
+        if (HT->getLink(i) > 0 && HT->getLink(i) <= capacity) //link exist to node
+        {
+            link[howmany] = HT->getLink(i); //find seed
+            cout << link[howmany] << " ";
+            howmany++;
+        }
+    }
+    link[howmany] = nroot; //store current node
+    howmany++;
+    node_cell *new_node_array = new node_cell[capacity];
     for (int i = 0; i < capacity; i++)
     {
+        new_node_array[i].left = 0;
+        new_node_array[i].right = 0;
     }
-    //    if(current == capacity)
+    for (int i = 0; i < howmany; i++)
+        new_node_array->copyTree(new_node_array, node_array, link[i]);
+    node_cell *temp = node_array;
+    delete[] temp;
+    node_array = new_node_array;
+    current = 0;
+    while (true)
+    {
+        current++;
+        if (node_array[current].left == 0 && node_array[current].right == 0)
+            break;
+    }
+    delete[] link;
+    cout << "garbage collection" << endl;
 }
 int Hash_Table::getLink(int address)
 {
@@ -160,6 +204,10 @@ int Hash_Table::setLink(int address, int ptr)
 {
     hash_table[address].link = ptr;
     return address;
+}
+int Hash_Table::getcap()
+{
+    return capacity;
 }
 
 int Hash_Table::getHashValue(string symbol)
@@ -270,10 +318,11 @@ int Node_Array::Read(string *input, Hash_Table *HT)
         return token_hash_value;
     }
 }
-string CheckStructure(string a, string b);
 
 string Node_Array::Eval(int root, Hash_Table *HT)
 {
+    if (root == 0)
+        return "0";
     if (root == 301)
     {
         cout << "calling calling " << endl;
@@ -335,12 +384,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
 
     else if (token_index == HT->getHashValue("eq?"))
     {
-        cout << "eq called" << endl;
         string l = Eval(node_array[node_array[root].right].left, HT);
         string r = Eval(node_array[node_array[node_array[root].right].right].left, HT);
-        cout << endl;
-        cout << l << endl;
-        cout << r << endl;
         if (l == r)
             return to_string(HT->getHashValue("#t"));
         else
@@ -348,15 +393,17 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     }
     else if (token_index == HT->getHashValue("equal?"))
     {
-        int l = node_array[node_array[root].right].left;
-        int r = node_array[node_array[node_array[root].right].right].left;
-        //        cout << endl
-        //            << l << endl;
-        //      cout << r << endl;
-        if (checkStructure(l, r))
+        cout << "root :" << root << endl;
+        int l = stoi(Eval(node_array[node_array[root].right].left, HT));
+        int r = stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT));
+        if (checkStructure(l, r, HT))
+        {
             return to_string(HT->getHashValue("#t"));
+        }
         else
+        {
             return to_string(HT->getHashValue("#f"));
+        }
     }
 
     // don't consider the error case(parameter error) e.g) (isnumber) or (isnumber 2  a)
@@ -417,8 +464,12 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         else
         {
             cout << "secret " << endl;
-            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(node_array[node_array[node_array[root].right].right].left))); // 음수로 저장
-                                                                                                                                                               //            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT))))); // 음수로 저장
+            int p = node_array[node_array[node_array[root].right].right].left;
+            if (p > 0)
+                HT->setLink(-node_array[node_array[root].right].left, p); // 음수로 저장
+            else
+                HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(node_array[node_array[node_array[root].right].right].left))); // 음수로 저장
+                                                                                                                                                                   //            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT))))); // 음수로 저장
         }
     }
     else if (token_index == HT->getHashValue("quote"))
@@ -482,7 +533,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left; //param 초기화
         cout << "param: " << param << endl;
         cout << "input: " << input << endl;
-        HT->print();
+        cout << "just saved(nothing changed)" << endl;
+        //        HT->print();
         while (param != 0) //input 값을 param에  //이 때 left를 eval해서 저장해야하나보다... 웅장이 가슴해진다
         {
             cout << param << endl;
@@ -495,14 +547,21 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             }
             cout << " p: " << p << endl;
             cout << "param: " << HT->getSymbol(node_array[param].left) << endl;
-            if (node_array[input].left == node_array[param].left)
+            if (node_array[input].left == node_array[param].left) //같으면 그냥 그걸 그대로
+            {
                 p = HT->getLink(-node_array[param].left);
+            }
             HT->setLink(-node_array[param].left, p);
             param = node_array[param].right;
             input = node_array[input].right;
         }
-        HT->print();
-        print();
+        for (int i = 0; i < howmany; i++)
+            cout << i << "th: " << array[i] << " ";
+        cout << endl;
+
+        cout << "param updated" << endl;
+        //        HT->print();
+        //        print();
 
         cout << "ofcour sehrer" << endl;
 
@@ -518,10 +577,12 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             temp++;
             param = node_array[param].right;
         }
-        HT->print();
+        cout << "param comeback" << endl;
+        //        HT->print();
         //        delete array;
         //        print();
         //        HT->print();
+        delete[] array;
         return result;
     }
     else if (token_index > 0) //list의 시작
@@ -539,6 +600,7 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     {
         //list 면 root를 return 해야함
         cout << "else called" << endl;
+        cout << token_index << endl;
         return Eval(token_index, HT);
 
         //        cout << "else called, token_index: " << token_index << endl;
