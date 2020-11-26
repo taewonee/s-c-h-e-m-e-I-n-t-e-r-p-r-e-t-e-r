@@ -1,3 +1,5 @@
+
+
 //Data_Structure_Project2_Scheme Interpreter_2016-12161_Taewon Lee
 //Hash_Table, Node_Array are implemented with class, snake_Case
 //Other function: camelCase
@@ -46,10 +48,18 @@ public:
     string readCommand(int root, Hash_Table *HT); //return the command according to the Node_array built
     void free(int root);                          //delete nodes
     string Eval(int root, Hash_Table *HT);        //Evaluation Function
-    int allocateNew();                            //allocate new memory
+    int allocateNew(Hash_Table *HT);              //allocate new memory
     void printList(int node, Hash_Table *HT);     //print the List
     int checkStructure(int rootA, int rootB);     //for the isequal(not used)
-    void garbageCollection();
+    void garbageCollection(Hash_Table *HT);
+    Node_Array()
+    {
+        for (int i = 0; i < capacity; i++)
+        {
+            node_array[i].left = 0;
+            node_array[i].right = 0;
+        }
+    }
 
 private:
     class node_cell
@@ -61,7 +71,6 @@ private:
     int current = 0;
     node_cell *node_array = new node_cell[capacity];
 };
-
 //functions needed
 string tolower(string input);                        //change CAPITAL to lower case
 unsigned int StringToInt(string s);                  //change string to int, to get a hash_key
@@ -71,7 +80,7 @@ int isNumber(string p);                              //0: non-number 1: int 2: f
 int main()
 {
     Hash_Table HT = Hash_Table();
-    Node_Array NA;
+    Node_Array NA = Node_Array();
     while (true)
     {
         string input;
@@ -86,21 +95,13 @@ int main()
         //        cout << "] Free list's root = " << NA.nextRoot() << endl;
         //        cout << "List's root = " << printRoot << endl;
         //        HT.print();
-
         string result = NA.Eval(root, &HT);
-        //        NA.print();
-
+        cout << "] ";
         int result_int = stoi(result);
         if (result_int < 0)
             cout << HT.getSymbol(result_int) << endl;
         if (result_int > 0)
             NA.printList(result_int, &HT);
-
-        if (root > 0)
-        {
-            //            cout << "input: (" << NA.readCommand(root, &HT) << endl; //print the input
-            //            NA.free(root);                                           //deallocate the memory array
-        }
     }
     return 0;
 }
@@ -129,19 +130,26 @@ int Node_Array::checkStructure(int rootA, int rootB)
     }
     return 1;
 }
-int Node_Array::allocateNew()
+int Node_Array::allocateNew(Hash_Table *HT)
 {
-
-    current++;
-    if (current > capacity)
-        garbageCollection();
+    while (true)
+    {
+        current++;
+        if (node_array[current].left == 0 && node_array[current].right == 0)
+            break;
+        if (current == capacity)
+            break;
+    }
+    if (current == capacity)
+        garbageCollection(HT);
     return current;
 }
-void Node_Array::garbageCollection()
+void Node_Array::garbageCollection(Hash_Table *HT)
 {
     cout << "garbage Collection" << endl;
-    throw runtime_error("node is full for now");
-
+    for (int i = 0; i < capacity; i++)
+    {
+    }
     //    if(current == capacity)
 }
 int Hash_Table::getLink(int address)
@@ -230,13 +238,13 @@ int Node_Array::Read(string *input, Hash_Table *HT)
         {
             if (first)
             {
-                root = temp = allocateNew();
+                root = temp = allocateNew(HT);
                 first = false;
             }
             else
             {
                 //node_array[temp].right = alloc();
-                node_array[temp].right = allocateNew();
+                node_array[temp].right = allocateNew(HT);
                 temp = node_array[temp].right;
             }
             if (token_hash_value == HT->getHashValue("("))
@@ -267,8 +275,11 @@ string CheckStructure(string a, string b);
 string Node_Array::Eval(int root, Hash_Table *HT)
 {
     if (root == 301)
+    {
+        cout << "calling calling " << endl;
         return "0";
-    if (root <= 0) //if it's a leaf
+    }
+    if (root < 0) //if it's a leaf
     {
         if (HT->getLink(-root))
         {
@@ -369,8 +380,9 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     else if (token_index == HT->getHashValue("null?")) //change
     {
         cout << "isnull: " << node_array[root].right << " " << node_array[node_array[root].right].left << endl;
-        cout << Eval(node_array[node_array[root].right].left, HT);
-        if (node_array[root].right == 0 || Eval(node_array[node_array[root].right].left, HT) == "0" || HT->getLink(-node_array[node_array[root].right].left) == 301) //NIL should be 0 from constructor;
+        string eval = Eval(node_array[node_array[root].right].left, HT);
+        cout << "eval: " << eval << endl;
+        if (node_array[root].right == 0 || eval == "0" || HT->getLink(-node_array[node_array[root].right].left) == 301) //NIL should be 0 from constructor;
         {
             cout << "true!" << endl;
             return to_string(HT->getHashValue("#t"));
@@ -416,7 +428,7 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     }
     else if (token_index == HT->getHashValue("cons"))
     {
-        int newmemory = allocateNew();
+        int newmemory = allocateNew(HT);
         cout << "cons called: " << newmemory << endl;
         cout << "left: " << node_array[node_array[root].right].left << " right: " << node_array[node_array[node_array[root].right].right].left << endl;
         node_array[newmemory].left = stoi(Eval(node_array[node_array[root].right].left, HT));
@@ -440,7 +452,9 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             if (p == to_string(HT->getHashValue("#t")))
             {
                 cout << "cond true!" << endl;
-                return Eval(node_array[node_array[node_array[root].left].right].left, HT);
+                string result = Eval(node_array[node_array[node_array[root].left].right].left, HT);
+                cout << "cond result: " << result << endl;
+                return result;
             }
         }
         //cout << "else here? " << node_array[root].right << endl;
@@ -474,37 +488,37 @@ string Node_Array::Eval(int root, Hash_Table *HT)
             cout << param << endl;
             int p = stoi(Eval(input, HT));
             cout << "pppppppppppppppppp: " << p << endl;
-            //            if (p > 0)
-            //                p = input;
             if (p == 0)
             {
                 cout << "301 used" << endl;
                 p = 301;
             }
-
             cout << " p: " << p << endl;
             cout << "param: " << HT->getSymbol(node_array[param].left) << endl;
-
+            if (node_array[input].left == node_array[param].left)
+                p = HT->getLink(-node_array[param].left);
             HT->setLink(-node_array[param].left, p);
             param = node_array[param].right;
             input = node_array[input].right;
         }
         HT->print();
+        print();
 
         cout << "ofcour sehrer" << endl;
 
         cout << node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left << endl;
         string result = Eval(node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left, HT); //결과 get
         cout << "daaam" << endl;
+        cout << "result: " << result << endl;
         param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left;
-
+        int temp = 0;
         while (param != 0) //setting param as input variable (param을 원래 값으로 돌려 놓음)
         {
-            int temp = 0;
             HT->setLink(-node_array[param].left, array[temp]);
             temp++;
             param = node_array[param].right;
         }
+        HT->print();
         //        delete array;
         //        print();
         //        HT->print();
@@ -512,28 +526,21 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     }
     else if (token_index > 0) //list의 시작
     {
-        //   if (node_array[root].right == 0)
+        cout << "list start?" << token_index << endl;
+        if (node_array[token_index].left == HT->getHashValue("quote")) //list면?
         {
-            cout << "listst?" << token_index << endl;
-            if (node_array[token_index].left > 0) //list면?
-            {
-                cout << "kkkkkk" << endl;
-                return to_string(token_index);
-            }
-            cout << "here!" << endl;
-            return Eval(token_index, HT);
+            cout << "must be list" << endl;
+            return to_string(token_index);
         }
-        cout << "finally" << token_index << endl;
-        return Eval(node_array[token_index].right, HT);
+        cout << "here!" << endl;
+        return Eval(token_index, HT);
     }
     else
     {
+        //list 면 root를 return 해야함
         cout << "else called" << endl;
-        if (node_array[root].right == 0)
-            return Eval(token_index, HT);
+        return Eval(token_index, HT);
 
-        cout << "finally" << endl;
-        return to_string(root);
         //        cout << "else called, token_index: " << token_index << endl;
         //        if (node_array[root].right == 0)
         //        {
