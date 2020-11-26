@@ -5,12 +5,14 @@
 //doesn't return the input when input doesn't start with '('
 //since it doesn't make Node_Array
 //variable(variable is one variable
-//not implemented to use same variables e.g) define x 3, (define (square x) (* x x));
+//recursion is not implemented
 #include <iostream>
 #include <cstring>
 #include <cctype>
+#define hash_capacity 500
+#define node_capacity 100
 using namespace std;
-//constructor will be added as the project goes on
+//contains hash_table, and hash_functions
 class Hash_Table
 {
 public:
@@ -19,7 +21,7 @@ public:
     string getSymbol(int hashKey);     //to get symbol
     int setLink(int address, int ptr); //to set link
     int getLink(int address);          //to get link
-    int getcap();
+    int getcap();                      //to get capacity
     Hash_Table()
     {
         hash_table[0].Symbol = "nil";
@@ -27,7 +29,7 @@ public:
     };
 
 private:
-    int capacity = 300;
+    int capacity = hash_capacity + 1;
     class hash_cell
     {
         friend Hash_Table;
@@ -36,8 +38,8 @@ private:
     };
     hash_cell *hash_table = new hash_cell[capacity];
 };
-//nextRoot is controlled by variable current(root at now)
-//constructor will be added as the project goes on
+
+//nextRoot is controlled by variable "current"(root at now)
 class Node_Array
 {
 public:
@@ -49,10 +51,11 @@ public:
     string Eval(int root, Hash_Table *HT);                    //Evaluation Function
     int allocateNew(Hash_Table *HT);                          //allocate new memory
     void printList(int node, Hash_Table *HT);                 //print the List
-    int checkStructure(int rootA, int rootB, Hash_Table *HT); //for the isequal(not used)
-    void garbageCollection(Hash_Table *HT);
-    int nroot = 0;
-    Node_Array()
+    int checkStructure(int rootA, int rootB, Hash_Table *HT); //for the isequal
+    void garbageCollection(Hash_Table *HT);                   //if node is full, remove node cells if it's not pointed by hash
+    int getNroot() { return nroot; };                         //return nroot
+    void setNroot(int num) { nroot = num; };                  //setting nroot
+    Node_Array()                                              //constructor
     {
         for (int i = 0; i < capacity; i++)
         {
@@ -66,9 +69,10 @@ private:
     {
         friend Node_Array;
         int left, right;
-        void copyTree(node_cell *new_node_array, node_cell *node_array, int i);
+        void copyTree(node_cell *new_node_array, node_cell *node_array, int i); //copy the original tree to new tree
     };
-    int capacity = 300;
+    int nroot = 0; //store the root(which is buliding for now)
+    int capacity = node_capacity + 1;
     int current = 0;
     node_cell *node_array = new node_cell[capacity];
 };
@@ -78,24 +82,27 @@ unsigned int StringToInt(string s);                  //change string to int, to 
 string preprocess(string *input, string newcommand); // will be added as the project goes on
 string next_token(string *sentence);                 //to get next token
 int isNumber(string p);                              //0: non-number 1: int 2: float
+
 int main()
 {
     Hash_Table HT = Hash_Table();
     Node_Array NA = Node_Array();
     while (true)
     {
+        //input
         string input;
         cout << "> ";
         getline(cin, input);
         input = tolower(input);
         string newcommand = "";
+        //preprocess
         newcommand = preprocess(&input, newcommand);
-        //        cout << "preprocessed: " << newcommand << endl;
+        //read
         int root = NA.Read(&newcommand, &HT);
-        NA.nroot = NA.nextRoot();
-        cout << "nroot: " << NA.nroot << endl;
-        //        NA.print();
+        NA.setNroot(NA.nextRoot());
+        //Eval
         string result = NA.Eval(root, &HT);
+        //print
         cout << "] ";
         int result_int = stoi(result);
         if (result_int < 0)
@@ -105,13 +112,12 @@ int main()
     }
     return 0;
 }
-//it cheks the structure + value
+
+//it checks the structure + value
 int Node_Array::checkStructure(int rootA, int rootB, Hash_Table *HT)
 {
-    cout << "A: " << rootA << "B: " << rootB << endl;
     if (node_array[rootA].left <= 0 && node_array[rootA].right <= 0) //leaf
     {
-        cout << "leaf" << endl;
         if (node_array[rootA].left == node_array[rootB].left && node_array[rootA].right == node_array[rootB].right)
             return 1;
         else
@@ -133,6 +139,8 @@ int Node_Array::checkStructure(int rootA, int rootB, Hash_Table *HT)
     }
     return 1;
 }
+
+//allocate new memory, if it's full garbage collection
 int Node_Array::allocateNew(Hash_Table *HT)
 {
     while (true)
@@ -147,6 +155,7 @@ int Node_Array::allocateNew(Hash_Table *HT)
         garbageCollection(HT);
     return current;
 }
+//copy tree to new tree
 void Node_Array::node_cell::copyTree(node_cell *new_node_array, node_cell *node_array, int i)
 {
     new_node_array[i].left = node_array[i].left;
@@ -158,9 +167,9 @@ void Node_Array::node_cell::copyTree(node_cell *new_node_array, node_cell *node_
     return;
 }
 
+//1.make a new node_array  2.copy when the tree is pointed by hash 3.use new node_array
 void Node_Array::garbageCollection(Hash_Table *HT)
 {
-    //reset current = 0;
     int low = 0;
     int *link = new int;
     int howmany = 0;
@@ -169,11 +178,10 @@ void Node_Array::garbageCollection(Hash_Table *HT)
         if (HT->getLink(i) > 0 && HT->getLink(i) <= capacity) //link exist to node
         {
             link[howmany] = HT->getLink(i); //find seed
-            cout << link[howmany] << " ";
             howmany++;
         }
     }
-    link[howmany] = nroot; //store current node
+    link[howmany] = getNroot(); //also store current node
     howmany++;
     node_cell *new_node_array = new node_cell[capacity];
     for (int i = 0; i < capacity; i++)
@@ -187,6 +195,7 @@ void Node_Array::garbageCollection(Hash_Table *HT)
     delete[] temp;
     node_array = new_node_array;
     current = 0;
+    //find next current
     while (true)
     {
         current++;
@@ -194,7 +203,7 @@ void Node_Array::garbageCollection(Hash_Table *HT)
             break;
     }
     delete[] link;
-    cout << "garbage collection" << endl;
+    cout << "---------- garbage collection ----------" << endl;
 }
 int Hash_Table::getLink(int address)
 {
@@ -227,51 +236,6 @@ int Hash_Table::getHashValue(string symbol)
     throw runtime_error("hash is full for now");
 };
 
-unsigned int StringToInt(string s)
-//following the pseudo code
-{
-    int length = (int)s.length();
-    unsigned int answer = 0;
-    if (length % 2 == 1)
-    {
-        answer = s.at(length - 1);
-        length--;
-    }
-    for (int i = 0; i < length; i += 2)
-    {
-        answer += s.at(i);
-        answer += ((int)s.at(i + 1)) << 8;
-    }
-    return answer;
-};
-
-string next_token(string *sentence)
-{
-    if (sentence->empty())
-        return "";
-    int k = sentence->find(" ");
-    if (k == 0) //remove useless space
-        return next_token(&(*sentence = sentence->substr(1, -1)));
-    string symbol = sentence->substr(0, k);
-    if (symbol.at(0) == '(' || symbol.at(0) == ')' || symbol.at(0) == '\'') // separating (state to ( state
-    {
-        symbol = symbol.at(0);
-        *sentence = sentence->substr(1, -1);
-        return symbol;
-    }
-    if (symbol.back() == ')' || symbol.back() == '(') //separating state) to state )
-    {
-        while (symbol.back() == ')' || symbol.back() == '(')
-            symbol.pop_back();
-        *sentence = sentence->substr(symbol.length(), -1);
-        return symbol;
-    }
-    if (k != -1)
-        *sentence = sentence->substr(k, -1);
-    if (k == -1)
-        *sentence = "";
-    return symbol;
-}
 int Node_Array::Read(string *input, Hash_Table *HT)
 //following the pseudo code
 {
@@ -323,32 +287,25 @@ string Node_Array::Eval(int root, Hash_Table *HT)
 {
     if (root == 0)
         return "0";
-    if (root == 301)
+    if (root == hash_capacity + 1) //check if it's list, but 0
     {
-        cout << "calling calling " << endl;
         return "0";
     }
-    if (root < 0) //if it's a leaf
+    if (root < 0) //if it's a token
     {
-        if (HT->getLink(-root))
+        if (HT->getLink(-root) > 0) //link exist, it's a list
         {
-            cout << "link exist: "
-                 << "root: " << root << " link: " << HT->getLink(-root) << endl;
-            if (HT->getLink(-root) == 301)
-            {
-                cout << "get link called" << endl;
+            if (HT->getLink(-root) == hash_capacity + 1)
                 return "0";
-            }
-            return Eval(HT->getLink(-root), HT);
+            return to_string(HT->getLink(-root));
         }
-        cout << "root: " << to_string(root) << endl;
+        else if (HT->getLink(-root) < 0) //link exist, it's a token
+            return Eval(HT->getLink(-root), HT);
         return to_string(root);
     }
-    int token_index = node_array[root].left; //should check root->left first to know what the root is;
-    //cout << "token_index: " << token_index << endl;
+    int token_index = node_array[root].left; //to know what the root is;
     if (token_index == HT->getHashValue("+"))
     {
-        //        cout << "+ called" << endl;
         string l = HT->getSymbol(stoi(Eval(node_array[node_array[root].right].left, HT)));
         string r = HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT)));
         if (isNumber(l) == 1 && isNumber(r) == 1)
@@ -368,7 +325,6 @@ string Node_Array::Eval(int root, Hash_Table *HT)
         else
             throw runtime_error("= error");
     }
-
     if (token_index == HT->getHashValue("-"))
         return to_string(HT->getHashValue(to_string(stof(HT->getSymbol(stoi(Eval(node_array[node_array[root].right].left, HT)))) - stof(HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT)))))));
     if (token_index == HT->getHashValue("*"))
@@ -384,6 +340,8 @@ string Node_Array::Eval(int root, Hash_Table *HT)
 
     else if (token_index == HT->getHashValue("eq?"))
     {
+        //at same memory?
+        // just can know by eval, since eval returns the hash memory at last
         string l = Eval(node_array[node_array[root].right].left, HT);
         string r = Eval(node_array[node_array[node_array[root].right].right].left, HT);
         if (l == r)
@@ -393,23 +351,17 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     }
     else if (token_index == HT->getHashValue("equal?"))
     {
-        cout << "root :" << root << endl;
         int l = stoi(Eval(node_array[node_array[root].right].left, HT));
         int r = stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT));
         if (checkStructure(l, r, HT))
-        {
             return to_string(HT->getHashValue("#t"));
-        }
         else
-        {
             return to_string(HT->getHashValue("#f"));
-        }
     }
 
     // don't consider the error case(parameter error) e.g) (isnumber) or (isnumber 2  a)
     else if (token_index == HT->getHashValue("number?"))
     {
-        //cout << "number called " << HT->getSymbol(stoi(Eval(node_array[node_array[root].right].left, HT))) << endl;
         if (isNumber(HT->getSymbol(stoi(Eval(node_array[node_array[root].right].left, HT)))))
             return to_string(HT->getHashValue("#t"));
         else
@@ -418,223 +370,109 @@ string Node_Array::Eval(int root, Hash_Table *HT)
     else if (token_index == HT->getHashValue("symbol?"))
     {
         string result = HT->getSymbol(stoi(Eval(node_array[node_array[root].right].left, HT)));
-        //        cout << "is symbol? " << result << endl;
         if (!isNumber(result))
             return to_string(HT->getHashValue("#t"));
         else
             return to_string(HT->getHashValue("#f"));
     }
-    else if (token_index == HT->getHashValue("null?")) //change
+    else if (token_index == HT->getHashValue("null?")) //is null?
     {
-        cout << "isnull: " << node_array[root].right << " " << node_array[node_array[root].right].left << endl;
         string eval = Eval(node_array[node_array[root].right].left, HT);
-        cout << "eval: " << eval << endl;
-        if (node_array[root].right == 0 || eval == "0" || HT->getLink(-node_array[node_array[root].right].left) == 301) //NIL should be 0 from constructor;
-        {
-            cout << "true!" << endl;
+        if (node_array[root].right == 0 || eval == "0" || HT->getLink(-node_array[node_array[root].right].left) == hash_capacity + 1) //NIL should be 0 from constructor;
             return to_string(HT->getHashValue("#t"));
-        }
         else
-        {
-            cout << "false!" << endl;
-            //            HT->print();
             return to_string(HT->getHashValue("#f"));
-        }
-        cout << "i guess here's wrong" << endl;
     }
     else if (token_index == HT->getHashValue("car"))
         return to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].left);
     else if (token_index == HT->getHashValue("cdr"))
+        return to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].right);
+    else if (token_index == HT->getHashValue("define"))
     {
-        //        print();
-        cout << "cdr called " << node_array[node_array[root].right].left << endl;
-        string result = to_string(node_array[stoi(Eval(node_array[node_array[root].right].left, HT))].right);
-
-        cout << "shit " << result << endl;
-        return result;
-    }
-    else if (token_index == HT->getHashValue("define")) //how to know this is function define?
-    {
-        //        cout << "define called" << endl;
-        if (node_array[node_array[node_array[node_array[root].right].right].left].left == HT->getHashValue("lambda"))
+        if (node_array[node_array[node_array[node_array[root].right].right].left].left == HT->getHashValue("lambda")) //if it's a function
         {
-            cout << "user define function, node: " << node_array[node_array[node_array[node_array[root].right].right].left].left << " " << HT->getHashValue("lambda") << endl;
-            HT->setLink(-node_array[node_array[root].right].left, node_array[node_array[node_array[root].right].right].left); //양수 index를 저장
+            HT->setLink(-node_array[node_array[root].right].left, node_array[node_array[node_array[root].right].right].left); //set link
         }
-        else
+        else //it's not a function
         {
-            cout << "secret " << endl;
             int p = node_array[node_array[node_array[root].right].right].left;
             if (p > 0)
-                HT->setLink(-node_array[node_array[root].right].left, p); // 음수로 저장
+                HT->setLink(-node_array[node_array[root].right].left, p);
             else
-                HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(node_array[node_array[node_array[root].right].right].left))); // 음수로 저장
-                                                                                                                                                                   //            HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT))))); // 음수로 저장
+                HT->setLink(-node_array[node_array[root].right].left, HT->getHashValue(HT->getSymbol(node_array[node_array[node_array[root].right].right].left)));
         }
     }
     else if (token_index == HT->getHashValue("quote"))
-    {
-        cout << "quote called: " << node_array[node_array[root].right].left << endl;
         return to_string(node_array[node_array[root].right].left);
-    }
     else if (token_index == HT->getHashValue("cons"))
     {
         int newmemory = allocateNew(HT);
-        cout << "cons called: " << newmemory << endl;
-        cout << "left: " << node_array[node_array[root].right].left << " right: " << node_array[node_array[node_array[root].right].right].left << endl;
         node_array[newmemory].left = stoi(Eval(node_array[node_array[root].right].left, HT));
-        cout << "left done " << node_array[newmemory].left << endl;
         node_array[newmemory].right = stoi(Eval(node_array[node_array[node_array[root].right].right].left, HT));
-        cout << "right done" << node_array[newmemory].right << endl;
-        //        print();
-        //        HT->print();
         return to_string(newmemory);
     }
-    else if (token_index == HT->getHashValue("cond")) //to change
+    else if (token_index == HT->getHashValue("cond"))
     {
-        cout << "cond called" << endl;
         while (node_array[node_array[root].right].right != 0) //this is nil
         {
             root = node_array[root].right;
-            cout << "COnd Eval: " << node_array[node_array[root].left].left << endl;
-            //cout << "to string #t: " << to_string(HT->getHashValue("#t")) << endl;
             string p = Eval(node_array[node_array[root].left].left, HT);
-            cout << "Eval Result: " << p << endl;
             if (p == to_string(HT->getHashValue("#t")))
             {
-                cout << "cond true!" << endl;
                 string result = Eval(node_array[node_array[node_array[root].left].right].left, HT);
-                cout << "cond result: " << result << endl;
                 return result;
             }
         }
-        //cout << "else here? " << node_array[root].right << endl;
-        //cout << "then what else: ? " << node_array[node_array[node_array[node_array[root].right].left].left].left << endl;
-        cout << "else: " << HT->getHashValue("else") << endl;
         if (node_array[node_array[node_array[root].right].left].left != HT->getHashValue("else"))
             throw runtime_error("else syntax error");
-        cout << "evaling: " << node_array[node_array[node_array[root].right].left].right << endl;
         return Eval(node_array[node_array[node_array[root].right].left].right, HT);
     }
     //when it's user define funciton
     else if (node_array[HT->getLink(-node_array[root].left)].left == HT->getHashValue("lambda"))
     {
-        cout << "user define function called" << endl;
         int *array = new int[10];
         int howmany = 0;
         int param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left;
         int input = node_array[root].right;
-        while (param != 0) //remember the link of parameter (parameter의 원래 값 저장)
+        while (param != 0) //remember the link of parameter
         {
             array[howmany] = HT->getLink(-node_array[param].left);
             howmany++;
             param = node_array[param].right;
         }
-        param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left; //param 초기화
-        cout << "param: " << param << endl;
-        cout << "input: " << input << endl;
-        cout << "just saved(nothing changed)" << endl;
-        //        HT->print();
-        while (param != 0) //input 값을 param에  //이 때 left를 eval해서 저장해야하나보다... 웅장이 가슴해진다
+        param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left; //reset parameter
+        while (param != 0)                                                              //set new link to parameter
         {
-            cout << param << endl;
             int p = stoi(Eval(input, HT));
-            cout << "pppppppppppppppppp: " << p << endl;
             if (p == 0)
-            {
-                cout << "301 used" << endl;
-                p = 301;
-            }
-            cout << " p: " << p << endl;
-            cout << "param: " << HT->getSymbol(node_array[param].left) << endl;
-            if (node_array[input].left == node_array[param].left) //같으면 그냥 그걸 그대로
-            {
+                p = hash_capacity + 1;
+            if (node_array[input].left == node_array[param].left) //if param == input, keep param as it is
                 p = HT->getLink(-node_array[param].left);
-            }
             HT->setLink(-node_array[param].left, p);
             param = node_array[param].right;
             input = node_array[input].right;
         }
-        for (int i = 0; i < howmany; i++)
-            cout << i << "th: " << array[i] << " ";
-        cout << endl;
-
-        cout << "param updated" << endl;
-        //        HT->print();
-        //        print();
-
-        cout << "ofcour sehrer" << endl;
-
-        cout << node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left << endl;
         string result = Eval(node_array[node_array[node_array[HT->getLink(-node_array[root].left)].right].right].left, HT); //결과 get
-        cout << "daaam" << endl;
-        cout << "result: " << result << endl;
         param = node_array[node_array[HT->getLink(-node_array[root].left)].right].left;
         int temp = 0;
-        while (param != 0) //setting param as input variable (param을 원래 값으로 돌려 놓음)
+        while (param != 0) //get parameters back
         {
             HT->setLink(-node_array[param].left, array[temp]);
             temp++;
             param = node_array[param].right;
         }
-        cout << "param comeback" << endl;
-        //        HT->print();
-        //        delete array;
-        //        print();
-        //        HT->print();
         delete[] array;
         return result;
     }
-    else if (token_index > 0) //list의 시작
+    else if (token_index > 0) //if it's a list
     {
-        cout << "list start?" << token_index << endl;
-        if (node_array[token_index].left == HT->getHashValue("quote")) //list면?
-        {
-            cout << "must be list" << endl;
-            return to_string(token_index);
-        }
-        cout << "here!" << endl;
         return Eval(token_index, HT);
     }
     else
     {
-        //list 면 root를 return 해야함
-        cout << "else called" << endl;
-        cout << token_index << endl;
         return Eval(token_index, HT);
-
-        //        cout << "else called, token_index: " << token_index << endl;
-        //        if (node_array[root].right == 0)
-        //        {
-        //           cout << "returing token index!" << endl;
-        //          return to_string(token_index);
-        //     }
-        //   else
-        //     return to_string(root);
     }
-    //cout << "now here?" << endl;
     return "0";
-}
-
-int isNumber(string symbol)
-{
-    bool float_point = false;
-    if (isdigit(symbol[0]) || (symbol.at(0) == '-' && symbol.length() != 1)) // minus checking
-        for (int i = 1; i < symbol.length(); i++)
-        {
-            if (!isdigit(symbol[i]))
-            {
-                if (symbol.at(i) == '.' && float_point == false) //float checking
-                    float_point = true;
-                else
-                    return false;
-            }
-        }
-    else
-        return false;
-    if (float_point)
-        return 2;
-    return 1;
 }
 
 string Hash_Table::getSymbol(int hashKey)
@@ -666,16 +504,6 @@ void Hash_Table::print()
     for (int i = 0; i < capacity; i++)
         if (!hash_table[i].Symbol.empty())
             cout << "index: " << i << " symbol: " << hash_table[i].Symbol << "\t link: " << hash_table[i].link << endl;
-}
-
-string tolower(string input)
-{
-    int length = input.length();
-    string output = "";
-    char onec;
-    for (int i = 0; i < length; i++)
-        output += onec = (input.at(i) >= 'A' && input.at(i) <= 'Z') ? input.at(i) + 32 : input.at(i);
-    return output;
 }
 
 string Node_Array::readCommand(int root, Hash_Table *HT)
@@ -732,4 +560,80 @@ string preprocess(string *input, string newcommand)
         token = next_token(input);
     }
     return newcommand;
+}
+unsigned int StringToInt(string s)
+//following the pseudo code
+{
+    int length = (int)s.length();
+    unsigned int answer = 0;
+    if (length % 2 == 1)
+    {
+        answer = s.at(length - 1);
+        length--;
+    }
+    for (int i = 0; i < length; i += 2)
+    {
+        answer += s.at(i);
+        answer += ((int)s.at(i + 1)) << 8;
+    }
+    return answer;
+};
+
+string next_token(string *sentence)
+{
+    if (sentence->empty())
+        return "";
+    int k = sentence->find(" ");
+    if (k == 0) //remove useless space
+        return next_token(&(*sentence = sentence->substr(1, -1)));
+    string symbol = sentence->substr(0, k);
+    if (symbol.at(0) == '(' || symbol.at(0) == ')' || symbol.at(0) == '\'') // separating (state to ( state
+    {
+        symbol = symbol.at(0);
+        *sentence = sentence->substr(1, -1);
+        return symbol;
+    }
+    if (symbol.back() == ')' || symbol.back() == '(') //separating state) to state )
+    {
+        while (symbol.back() == ')' || symbol.back() == '(')
+            symbol.pop_back();
+        *sentence = sentence->substr(symbol.length(), -1);
+        return symbol;
+    }
+    if (k != -1)
+        *sentence = sentence->substr(k, -1);
+    if (k == -1)
+        *sentence = "";
+    return symbol;
+}
+
+int isNumber(string symbol)
+{
+    bool float_point = false;
+    if (isdigit(symbol[0]) || (symbol.at(0) == '-' && symbol.length() != 1)) // minus checking
+        for (int i = 1; i < symbol.length(); i++)
+        {
+            if (!isdigit(symbol[i]))
+            {
+                if (symbol.at(i) == '.' && float_point == false) //float checking
+                    float_point = true;
+                else
+                    return false;
+            }
+        }
+    else
+        return false;
+    if (float_point)
+        return 2;
+    return 1;
+}
+
+string tolower(string input)
+{
+    int length = input.length();
+    string output = "";
+    char onec;
+    for (int i = 0; i < length; i++)
+        output += onec = (input.at(i) >= 'A' && input.at(i) <= 'Z') ? input.at(i) + 32 : input.at(i);
+    return output;
 }
