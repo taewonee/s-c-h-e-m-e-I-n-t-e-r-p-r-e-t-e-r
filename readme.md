@@ -1,4 +1,4 @@
-Scheme Interpreter ver 2.
+S'c'h'e'm'e I'n't'e'r'p'r'e't'e'r ver 2.
 Windows10, g++ version 8.1.0
 
 - Steps:
